@@ -95,16 +95,34 @@ Tokenizer::nextToken() {
               break;
             case '-':
               // 请填空：切换到减号的状态
+              current_state = DFAState::MINUS_SIGN_STATE;
+              break;
             case '+':
               // 请填空：切换到加号的状态
+              current_state = DFAState::PLUS_SIGN_STATE;
+              break;
             case '*':
               // 请填空：切换状态
+              current_state = DFAState::MULTIPLICATION_SIGN_STATE;
+              break;
             case '/':
               // 请填空：切换状态
+              current_state = DFAState::DIVISION_SIGN_STATE;
+              break;
 
             ///// 请填空：
             ///// 对于其他的可接受字符
             ///// 切换到对应的状态
+
+            case '(':
+              current_state = DFAState::LEFTBRACKET_STATE;
+              break;
+            case ')':
+              current_state = DFAState::RIGHTBRACKET_STATE;
+              break;
+            case ';':
+              current_state = DFAState::SEMICOLON_STATE;
+              break;
 
             // 不接受的字符导致的不合法的状态
             default:
@@ -138,6 +156,19 @@ Tokenizer::nextToken() {
         // 如果读到的字符是数字，则存储读到的字符
         // 如果读到的字符不是数字，则回退读到的字符，并解析已经读到的字符串为整数
         //     解析成功则返回无符号整数类型的token，否则返回编译错误
+        if (!current_char.has_value()) {
+          int n = atoi(ss.str().c_str());
+          return std::make_pair(std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, n, pos, currentPos()), std::optional<CompilationError>());
+        }
+        auto ch = current_char.value();
+
+        if (miniplc0::isdigit(ch)) {
+          ss << ch;
+        } else {
+          unreadLast();
+          int n = atoi(ss.str().c_str());
+          return std::make_pair(std::make_optional<Token>(TokenType::UNSIGNED_INTEGER, n, pos, currentPos()), std::optional<CompilationError>());
+        }
         break;
       }
       case IDENTIFIER_STATE: {
@@ -147,6 +178,33 @@ Tokenizer::nextToken() {
         // 如果读到的是字符或字母，则存储读到的字符
         // 如果读到的字符不是上述情况之一，则回退读到的字符，并解析已经读到的字符串
         //     如果解析结果是关键字，那么返回对应关键字的token，否则返回标识符的token
+        int flag = 0;
+        if (!current_char.has_value()) {
+          flag = 1;
+        } else {
+          auto ch = current_char.value();
+          if (miniplc0::isdigit(ch)||miniplc0::isalpha(ch)) {
+            ss << ch;
+          } else {
+            unreadLast();
+            flag = 1;
+          }
+        }
+        if (flag) {
+          if (ss.str().compare("begin") == 0) {
+            return std::make_pair(std::make_optional<Token>(TokenType::BEGIN, ss.str(), pos, currentPos()),std::optional<CompilationError>());
+          } else if (ss.str().compare("end") == 0) {
+            return std::make_pair(std::make_optional<Token>(TokenType::END, ss.str(), pos, currentPos()),std::optional<CompilationError>());
+          } else if (ss.str().compare("const") == 0) {
+            return std::make_pair(std::make_optional<Token>(TokenType::CONST, ss.str(), pos, currentPos()),std::optional<CompilationError>());
+          } else if (ss.str().compare("var") == 0) {
+            return std::make_pair(std::make_optional<Token>(TokenType::VAR, ss.str(), pos, currentPos()),std::optional<CompilationError>());
+          } else if (ss.str().compare("print") == 0) {
+            return std::make_pair(std::make_optional<Token>(TokenType::PRINT, ss.str(), pos, currentPos()),std::optional<CompilationError>());
+          } else {
+            return std::make_pair(std::make_optional<Token>(TokenType::IDENTIFIER, ss.str(), pos, currentPos()), std::optional<CompilationError>());
+          }
+        }
         break;
       }
 
@@ -161,11 +219,32 @@ Tokenizer::nextToken() {
         // 当前状态为减号的状态
       case MINUS_SIGN_STATE: {
         // 请填空：回退，并返回减号token
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::MINUS_SIGN, '-', pos, currentPos()), std::optional<CompilationError>());
       }
 
         // 请填空：
         // 对于其他的合法状态，进行合适的操作
         // 比如进行解析、返回token、返回编译错误
+      case MULTIPLICATION_SIGN_STATE: {
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::MULTIPLICATION_SIGN, '*', pos, currentPos()), std::optional<CompilationError>());
+      }case DIVISION_SIGN_STATE: {
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::DIVISION_SIGN, '/', pos, currentPos()), std::optional<CompilationError>());
+      }case LEFTBRACKET_STATE: {
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::LEFT_BRACKET, '(', pos, currentPos()), std::optional<CompilationError>());
+      }case RIGHTBRACKET_STATE: {
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::RIGHT_BRACKET, ')', pos, currentPos()), std::optional<CompilationError>());
+      }case EQUAL_SIGN_STATE: {
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::EQUAL_SIGN, '=', pos, currentPos()), std::optional<CompilationError>());
+      }case SEMICOLON_STATE: {
+        unreadLast();
+        return std::make_pair(std::make_optional<Token>(TokenType::SEMICOLON, ';', pos, currentPos()), std::optional<CompilationError>());
+      }
 
         // 预料之外的状态，如果执行到了这里，说明程序异常
       default:
